@@ -11,12 +11,7 @@ p ≤ 30000, n ≤ 300000.
 struct array_z_and_l_r {
 	std::vector<uint64_t> z;
 	uint64_t l = 0, r = 0;
-	array_z_and_l_r() {}
-	array_z_and_l_r(std::vector<uint64_t> array, uint64_t L, uint64_t R) {
-		z = std::move(array);
-		l = L;
-		r = R;
-	}
+	array_z_and_l_r(std::vector<uint64_t> array, uint64_t L, uint64_t R) : z(std::move(array)), l(L), r(R) {}
 };
 
 array_z_and_l_r z_function(const std::string& s) {
