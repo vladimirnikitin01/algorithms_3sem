@@ -36,7 +36,7 @@ array_z_and_l_r z_function(const std::string& s) {
 	return { z, left, right };
 }
 
-void z_function_main(const std::string& s, const  std::string& pattern, const array_z_and_l_r information_pattern) {
+void z_function_main(const std::string& s, const  std::string& pattern, const array_z_and_l_r& information_pattern) {
 	uint64_t left = information_pattern.l, right = information_pattern.r;
 	for (uint64_t i = 1 + information_pattern.z.size(); i < s.size() + information_pattern.z.size() + 1; ++i) {
 		uint64_t z_now = 0;
