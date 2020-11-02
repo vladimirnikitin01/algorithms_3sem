@@ -8,11 +8,11 @@
 struct value_and_index {
 	int64_t value = 0;
 	uint64_t index = 0;
-	value_and_index(int64_t value_, uint64_t index_) : value(value_), index(index_) {};
+	value_and_index(const int64_t value_, const uint64_t index_) : value(value_), index(index_) {};
 	value_and_index() {};
 };
 
-bool comp(value_and_index& a, value_and_index& b) {
+bool comp(const value_and_index& a, const value_and_index& b) {
 	return a.value < b.value;
 }
 
@@ -35,7 +35,7 @@ void BuildSuffixArrayFirstStep(std::vector<uint64_t>& suffix_array, std::vector<
 }
 
 
-void BuildSuffixArraySecondStep(std::vector<uint64_t>& suffix_array, std::vector<uint64_t>& class_symbols, std::string& s, uint64_t& class_of_number) {
+void BuildSuffixArraySecondStep(std::vector<uint64_t>& suffix_array, std::vector<uint64_t>& class_symbols, const std::string& s, uint64_t& class_of_number) {
 	std::vector<uint64_t> suffix_array_for_second_part(s.size());
 	std::vector<uint64_t> class_symbols_new(s.size());
 	uint64_t k = 1;
@@ -75,7 +75,7 @@ void BuildSuffixArraySecondStep(std::vector<uint64_t>& suffix_array, std::vector
 	}
 }
 
-std::vector<uint64_t> BuildSuffixArray(std::string& s) {
+std::vector<uint64_t> BuildSuffixArray(const std::string& s) {
 	std::string s1 = s + "$";
 	std::vector<uint64_t> suffix_array(s1.size());
 	std::vector<uint64_t> class_symbols(s1.size());
@@ -88,7 +88,7 @@ std::vector<uint64_t> BuildSuffixArray(std::string& s) {
 	return suffix_array;
 }
 
-std::vector<uint64_t> BuildLcp(std::string& s, std::vector<uint64_t>& suffix_array) {
+std::vector<uint64_t> BuildLcp(const std::string& s, const std::vector<uint64_t>& suffix_array) {
 	// do the reverse suffix_array
 	std::vector<uint64_t> reserve_suffix_array(suffix_array.size());
 	for (uint64_t i = 0; i < suffix_array.size(); ++i) {
@@ -111,7 +111,7 @@ std::vector<uint64_t> BuildLcp(std::string& s, std::vector<uint64_t>& suffix_arr
 	}
 	return lcp;
 }
-std::string Algorithm(std::string& a, std::string& b, const uint64_t k) {
+std::string Algorithm(const std::string& a, const std::string& b, const uint64_t k) {
 	std::string s = a + "%" + b;
 	auto suffix = BuildSuffixArray(s);
 	auto lcp = BuildLcp(s, suffix);
