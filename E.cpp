@@ -1,5 +1,6 @@
-﻿/*Даны строки s и t. Постройте сжатое суффиксное дерево, которое содержит все суффиксы строки s и строки t.
- Найдите такое дерево, которое содержит минимальное количество вершин.*/
+﻿/*Даны строки s и t. Постройте сжатое суффиксное дерево,
+которое содержит все суффиксы строки s и строки t.
+Найдите такое дерево, которое содержит минимальное количество вершин.*/
 
 #include <iostream>
 #include <vector>
@@ -15,7 +16,7 @@ struct Vertex {
 	std::map<char, uint64_t> edge;
 	uint64_t parent_dfs = 0;//эти 2 переменные нужны для вывода в dfs в нужном порядке,
 	uint64_t active_number_dfs = 0;// так как мы будем на ходу давать новый порядок
-	Vertex(int64_t parent_, int64_t left, int64_t right) : parent(parent_), left_border(left), right_border(right) {}
+	Vertex(const int64_t parent_,const int64_t left, const int64_t right) : parent(parent_), left_border(left), right_border(right) {}
 	Vertex() {}
 };
 class Gragh {
@@ -47,7 +48,7 @@ public:
 		}
 	}
 
-	void add_edge(char s) {
+	void add_edge(const char s) {
 		vertexes.emplace_back(Vertex(vertex_now, index_string, all_text.size() - 1));
 		vertexes[vertex_now].edge[s] = (vertexes.size() - 1);
 		vertex_now = vertexes[vertex_now].suffix_link;//теперь надо сделать это для других вершин, идем по ссылкам
@@ -90,7 +91,7 @@ public:
 		active_symbol = vertexes[vertex_now].right_border + old_vertex.right_border + 2 - active_symbol;
 	}
 
-	void dfs(int64_t i) {
+	void dfs(const int64_t i) {
 		auto& vertex_i = vertexes[i];
 		if (i != 0) {
 			std::cout << vertex_i.parent_dfs << ' ';
@@ -116,7 +117,7 @@ public:
 		dfs(0);
 	}
 
-	void ukkonen(char s) {//тут будет, скорее всего, 3 варианта добавления,как на нирке
+	void ukkonen(const char s) {//тут будет, скорее всего, 3 варианта добавления,как на нирке
 		//находимся ли в границах нашего ребра
 		if (vertexes[vertex_now].right_border < active_symbol) {
 			//сейчас надо пойти по след ребру, иначе создать его и пойти по нему
@@ -147,7 +148,7 @@ public:
 		ukkonen(s);
 	}
 
-	void algorithm(std::string& first_string, std::string& second_string) {
+	void algorithm(const std::string& first_string, const std::string& second_string) {
 		std::string itog = first_string + second_string;
 		all_text = itog;
 		position_$ = first_string.size() - 1;
