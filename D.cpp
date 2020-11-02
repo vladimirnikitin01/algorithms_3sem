@@ -10,13 +10,13 @@ struct ValueAndIndex
 {
 	int64_t value = 0;
 	uint64_t index = 0;
-	ValueAndIndex(int64_t value_in, uint64_t index_in) : value(value_in), index(index_in)
+	ValueAndIndex(const int64_t value_in,const uint64_t index_in) : value(value_in), index(index_in)
 	{
 	};
 	ValueAndIndex() = default;;
 };
 
-bool comp(ValueAndIndex& a, ValueAndIndex& b)
+bool comp(const ValueAndIndex& a,const ValueAndIndex& b)
 {
 	return a.value < b.value;
 }
