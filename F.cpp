@@ -6,6 +6,9 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <optional>
+
+const char PERCENT_ = '%';
 
 struct Information {
     int64_t value = 0;
@@ -159,8 +162,8 @@ std::vector<uint64_t> SuffixArray::giveSuffix() {
     return suffix_array;
 }
 
-std::string algorithm(const std::string &a, const std::string &b, const uint64_t k) {
-    std::string s = a + "%" + b;
+std::optional<std::string> algorithm(const std::string &a, const std::string &b, const uint64_t k) {
+    std::string s = a + PERCENT_ + b;
     SuffixArray suffix_array(s);
     auto lcp = suffix_array.buildLcp();
     uint64_t sum = 0;
@@ -182,7 +185,9 @@ std::string algorithm(const std::string &a, const std::string &b, const uint64_t
                 break;
             }
         }
-
+    }
+    if (result.empty()) {
+        return std::nullopt;
     }
     return result;
 }
@@ -194,9 +199,5 @@ int main() {
     std::string a, b;
     std::cin >> a >> b >> k;
     auto s = algorithm(a, b, k);
-    if (s.empty()) {
-        std::cout << -1;
-    } else {
-        std::cout << s;
-    }
+    std::cout << s.value_or("-1");
 }
