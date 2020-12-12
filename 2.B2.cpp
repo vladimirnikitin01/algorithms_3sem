@@ -28,6 +28,13 @@ struct Point {
     Point() : x(0), y(0) {}
 };
 
+std::istream &operator>>(std::istream &in, Point &point_now) {
+    int64_t a, b;
+    in >> a >> b;
+    point_now = Point(a, b);
+    return (in);
+}
+
 bool operator==(const Point &a, const Point &b) {
     return a.x == b.x && a.y == b.y;
 }
@@ -37,11 +44,11 @@ bool operator!=(const Point &a, const Point &b) {
 }
 
 bool comp(const Point &a, const Point &b) {
-    return a.x < b.x || (a.x == b.x && a.y < b.y);
+    return std::tie(a.x, a.y) < std::tie(b.x, b.y);
 }
 
-int64_t
-cross_product(const Point &Z, const Point &F, const Point &C) {//относительно точки Z строятся два вектора ZF, ZC
+int64_t cross_product(const Point &Z, const Point &F, const Point &C) {
+    //относительно точки Z строятся два вектора ZF, ZC
     int64_t a_x = F.x - Z.x;//a первый вектор, b второй
     int64_t a_y = F.y - Z.y;
     int64_t b_x = C.x - Z.x;
@@ -68,9 +75,9 @@ double distance(const Point &a, const Point &b) {
 class ConvexHull {
 private:
     uint64_t size = 0;
-    std::vector<Point> all_points;
-    std::vector<Point> upper_part;
-    std::vector<Point> lower_part;
+    std::vector<Point> all_points_;
+    std::vector<Point> upper_part_;
+    std::vector<Point> lower_part_;
 public:
 
     explicit ConvexHull(const std::vector<Point> &all_points_);
@@ -86,69 +93,67 @@ public:
     double algorithm();
 };
 
-ConvexHull::ConvexHull(const std::vector<Point> &all_points_) : all_points(all_points_), size(all_points_.size()) {}
+ConvexHull::ConvexHull(const std::vector<Point> &all_points_) : all_points_(all_points_), size(all_points_.size()) {}
 
 void ConvexHull::insert_upper_part(const Point &now_point) {
-    while (upper_part.size() >= 2) {
-        uint64_t i = upper_part.size() - 1;
-        if (sign_cross_product(upper_part[i - 1], upper_part[i], now_point) >= 0) {
-            upper_part.pop_back();
+    while (upper_part_.size() >= 2) {
+        uint64_t i = upper_part_.size() - 1;
+        if (sign_cross_product(upper_part_[i - 1], upper_part_[i], now_point) >= 0) {
+            upper_part_.pop_back();
         } else {
             break;
         }
     }
-    upper_part.emplace_back(now_point);
+    upper_part_.emplace_back(now_point);
 }
 
 void ConvexHull::insert_lower_part(const Point &now_point) {
-    while (lower_part.size() >= 2) {
-        uint64_t i = lower_part.size() - 1;
-        if (sign_cross_product(lower_part[i - 1], lower_part[i], now_point) <= 0) {
-            lower_part.pop_back();
+    while (lower_part_.size() >= 2) {
+        uint64_t i = lower_part_.size() - 1;
+        if (sign_cross_product(lower_part_[i - 1], lower_part_[i], now_point) <= 0) {
+            lower_part_.pop_back();
         } else {
             break;
         }
     }
-    lower_part.emplace_back(now_point);
+    lower_part_.emplace_back(now_point);
 }
 
 double ConvexHull::total_distance() {
     double sum = 0;
-    for (uint64_t i = 0; i <= upper_part.size() - 2; ++i) {
-        sum += distance(upper_part[i], upper_part[i + 1]);
+    for (uint64_t i = 0; i <= upper_part_.size() - 2; ++i) {
+        sum += distance(upper_part_[i], upper_part_[i + 1]);
     }
-    for (uint64_t i = 0; i <= lower_part.size() - 2; ++i) {
-        sum += distance(lower_part[i], lower_part[i + 1]);
+    for (uint64_t i = 0; i <= lower_part_.size() - 2; ++i) {
+        sum += distance(lower_part_[i], lower_part_[i + 1]);
     }
     return sum;
 }
 
 double ConvexHull::algorithm() {
-    std::sort(all_points.begin(), all_points.end(), comp);
-    auto last_element = std::unique(all_points.begin(), all_points.end());
-    all_points.erase(last_element, all_points.end());
-    size = all_points.size();
+    std::sort(all_points_.begin(), all_points_.end(), comp);
+    auto last_element = std::unique(all_points_.begin(), all_points_.end());
+    all_points_.erase(last_element, all_points_.end());
+    size = all_points_.size();
 
-    upper_part.reserve(size);
-    lower_part.reserve(size);
+    upper_part_.reserve(size);
+    lower_part_.reserve(size);
 
-    upper_part.emplace_back(all_points[0]);
-    lower_part.emplace_back(all_points[0]);
-    Point A = all_points[0];
-    Point B = all_points[all_points.size() - 1];
+    upper_part_.emplace_back(all_points_[0]);
+    lower_part_.emplace_back(all_points_[0]);
+    Point A = all_points_[0];
+    Point B = all_points_[all_points_.size() - 1];
 
-    for (uint64_t i = 0; i < size; ++i) {
-        if (all_points[i] == B) {
-            insert_upper_part(all_points[i]);
-            insert_lower_part(all_points[i]);
-            break;
-        }
-        if (sign_cross_product(A, B, all_points[i]) == 1) {//upper
-            insert_upper_part(all_points[i]);
-        } else if (sign_cross_product(A, B, all_points[i]) == -1) {//lower
-            insert_lower_part(all_points[i]);
+    for (uint64_t i = 0; i + 1 < size; ++i) {
+        if (sign_cross_product(A, B, all_points_[i]) == 1) {//upper
+            insert_upper_part(all_points_[i]);
+        } else if (sign_cross_product(A, B, all_points_[i]) == -1) {//lower
+            insert_lower_part(all_points_[i]);
         }
     }
+    insert_upper_part(B);
+    insert_lower_part(B);
+
     return total_distance();
 }
 
@@ -158,12 +163,11 @@ int main() {
     std::cin.tie(nullptr);
     uint64_t n;
     std::cin >> n;
-    int64_t first_x, first_y;
+    Point first;
     std::vector<Point> all_points(n);
     for (uint64_t i = 0; i < n; ++i) {
-        std::cin >> first_x >> first_y;
-        all_points[i].x = first_x;
-        all_points[i].y = first_y;
+        std::cin >> first;
+        all_points[i] = first;
     }
     ConvexHull convex_hull(all_points);
     std::cout << std::setprecision(17) << convex_hull.algorithm();
