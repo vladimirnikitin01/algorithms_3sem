@@ -21,8 +21,15 @@ struct Point {
     Point() : x(0), y(0) {}
 };
 
-int64_t
-cross_product(const Point &Z, const Point &F, const Point &C) {//относительно точки Z строятся два вектора ZF, ZC
+std::istream &operator>>(std::istream &in, Point &point_now) {
+    int64_t a, b;
+    in >> a >> b;
+    point_now = Point(a, b);
+    return (in);
+}
+
+int64_t cross_product(const Point &Z, const Point &F, const Point &C) {
+    //относительно точки Z строятся два вектора ZF, ZC
     int64_t a_x = F.x - Z.x;//a первый вектор, b второй
     int64_t a_y = F.y - Z.y;
     int64_t b_x = C.x - Z.x;
@@ -41,26 +48,28 @@ int sign_cross_product(const Point &Z, const Point &F, const Point &C) {
     }
 }
 
-bool intersection_two_segments(const Point &a, const Point &b, const Point &c, const Point &d) {//AB and CD
+bool intersection_two_segments(const Point &a, const Point &b, const Point &c, const Point &d) {
+    //AB and CD
     return sign_cross_product(a, b, c) * sign_cross_product(a, b, d) <= 0 &&
            sign_cross_product(d, c, a) * sign_cross_product(d, c, b) <= 0;
 }
 
 uint64_t algorithm(const Point &A, const Point &B, const uint64_t n) {
-    int64_t first_x, first_y, second_x, second_y;
+    Point first, second;
     uint64_t sum = 0;
     for (uint64_t i = 0; i < n; ++i) {
-        std::cin >> first_x >> first_y >> second_x >> second_y;
-        sum += intersection_two_segments(A, B, Point(first_x, first_y), Point(second_x, second_y));
+        std::cin >> first >> second;
+        sum += intersection_two_segments(A, B, first, second);
     }
     return sum;
 }
 
+
 int main() {
     std::ios::sync_with_stdio(false);
     std::cin.tie(nullptr);
-    int64_t first_x, first_y, second_x, second_y;
+    Point first, second;
     uint64_t n;
-    std::cin >> first_x >> first_y >> second_x >> second_y >> n;
-    std::cout << algorithm(Point(first_x, first_y), Point(second_x, second_y), n);
+    std::cin >> first >> second >> n;
+    std::cout << algorithm(first, second, n);
 }
