@@ -79,6 +79,7 @@ class MinkowskiAddition {
 private:
     std::vector<Vector> array_vector_;
     Point position_now_;
+
     std::vector<Point> first_polygon_;
     std::vector<Point> second_polygon_;
     std::vector<Point> array_vertex_;
@@ -87,40 +88,21 @@ private:
     std::vector<Vector> array_vector_first_;
     std::vector<Vector> array_vector_second_;
 
-    static Point search_start_(const std::vector<Point> &now, uint64_t &index);
-
-    static long double area_(const std::vector<Point> &array_vertex_now);
+    static uint64_t search_start_(const std::vector<Point> &now, uint64_t &index);
 
     static void do_array_vector_of_polygon_(std::vector<Vector> &array_vector_now, const std::vector<Point> &polygon_now,
                                             uint64_t index_start);
 
     void do_array_vectors_();
 
-    void build_minkowski_();
-
 public:
-    MinkowskiAddition() = default;
+    MinkowskiAddition(const std::vector<Point> &first, const std::vector<Point> &second);
 
-    void input(uint64_t n);
-
-    long double algorithm();
+    std::vector<Point> give_polygon();
 };
 
-void MinkowskiAddition::input(uint64_t n) {
-    std::vector<Point> now_polygon(n);
-    Point point_input;
-    for (uint64_t i = 0; i < n; ++i) {
-        std::cin >> point_input;
-        now_polygon[i] = point_input;
-    }
-    if (!first_polygon_.empty()) {
-        second_polygon_ = std::move(now_polygon);
-    } else {
-        first_polygon_ = std::move(now_polygon);
-    }
-}
 
-Point MinkowskiAddition::search_start_(const std::vector<Point> &now, uint64_t &index) {
+uint64_t MinkowskiAddition::search_start_(const std::vector<Point> &now, uint64_t &index) {
     index = 0;
     int64_t min_x = now.front().x;
     int64_t min_y = now.front().y;
@@ -132,18 +114,7 @@ Point MinkowskiAddition::search_start_(const std::vector<Point> &now, uint64_t &
             index = i;
         }
     }
-    return Point(min_x, min_y);
-}
-
-long double MinkowskiAddition::area_(const std::vector<Point> &array_vertex_now) {
-    long double sum = 0;
-    for (uint64_t i = 0; i < array_vertex_now.size() - 1; ++i) {
-        sum += array_vertex_now[i].x * array_vertex_now[i + 1].y;
-        sum -= array_vertex_now[i].y * array_vertex_now[i + 1].x;
-    }
-    sum += array_vertex_now[array_vertex_now.size() - 1].x * array_vertex_now[0].y;
-    sum -= array_vertex_now[array_vertex_now.size() - 1].y * array_vertex_now[0].x;
-    return (std::abs(sum) / 2);
+    return index;
 }
 
 void MinkowskiAddition::do_array_vector_of_polygon_(std::vector<Vector> &array_vector_now,
@@ -187,10 +158,13 @@ void MinkowskiAddition::do_array_vectors_() {
 }
 
 
-void MinkowskiAddition::build_minkowski_() {
+MinkowskiAddition::MinkowskiAddition(const std::vector<Point> &first, const std::vector<Point> &second) {
+    first_polygon_ = first;
+    second_polygon_ = second;
+
     array_vector_.reserve(first_polygon_.size() + second_polygon_.size());
-    Point start_first = search_start_(first_polygon_, index_start_first_);
-    Point start_second = search_start_(second_polygon_, index_start_second_);
+    Point start_first = first_polygon_[search_start_(first_polygon_, index_start_first_)];
+    Point start_second = second_polygon_[search_start_(second_polygon_, index_start_second_)];
     do_array_vectors_();
 
     position_now_ = Point(start_first.x + start_second.x, start_first.y + start_second.y);
@@ -204,20 +178,47 @@ void MinkowskiAddition::build_minkowski_() {
     }
 }
 
-long double MinkowskiAddition::algorithm() {
-    build_minkowski_();
-    long double mixed_area = area_(array_vertex_) - area_(first_polygon_) - area_(second_polygon_);
-    return (mixed_area / 2);
+std::vector<Point> MinkowskiAddition::give_polygon() {
+    return array_vertex_;
+}
+
+
+std::vector<Point> do_polygon(uint64_t n) {
+    std::vector<Point> now_polygon(n);
+    for (uint64_t i = 0; i < n; ++i) {
+        std::cin >> now_polygon[i];
+    }
+    return now_polygon;
+}
+
+std::vector<Point> operator+(const std::vector<Point> &x, const std::vector<Point> &y) {
+    MinkowskiAddition new_polygon(x, y);
+    return (new_polygon.give_polygon());
+}
+
+long double area(const std::vector<Point> &array_vertex_now) {
+    long double sum = 0;
+    for (uint64_t i = 0; i < array_vertex_now.size() - 1; ++i) {
+        sum += array_vertex_now[i].x * array_vertex_now[i + 1].y;
+        sum -= array_vertex_now[i].y * array_vertex_now[i + 1].x;
+    }
+    sum += array_vertex_now.back().x * array_vertex_now[0].y;
+    sum -= array_vertex_now.back().y * array_vertex_now[0].x;
+    return std::abs(sum) / 2;
+}
+
+long double algorithm(const std::vector<Point> &first, const std::vector<Point> &second) {
+    long double mixed_area = area(first + second) - area(second) - area(first);
+    return mixed_area / 2;
 }
 
 int main() {
     std::ios::sync_with_stdio(false);
     std::cin.tie(nullptr);
-    MinkowskiAddition land_plot;
     uint64_t n;
     std::cin >> n;
-    land_plot.input(n);
+    auto first_polygon = do_polygon(n);
     std::cin >> n;
-    land_plot.input(n);
-    std::cout << std::fixed << std::setprecision(6) << land_plot.algorithm();
+    auto second_polygon = do_polygon(n);
+    std::cout << std::fixed << std::setprecision(6) << algorithm(first_polygon, second_polygon);
 }
