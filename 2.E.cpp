@@ -3,7 +3,8 @@
 то день точно сложится удачно. А если нет — то стоит ждать беды. Чтобы точнее сказать, что конкретно пойдет хорошо в этот день,
 нужно знать, какие именно палочки пересекаются. Помогите Арсению узнать, как пройдет день у его клиентов.
 Формат ввода
-Палочка представляется как отрезок прямой. В первой строке входного файла записано число N (1 ≤ N ≤ 125   000) — количество палочек в гадании.
+Палочка представляется как отрезок прямой. В первой строке входного файла записано число N (1 ≤ N ≤ 125   000)
+ — количество палочек в гадании.
 Следующие N строк содержат описания палочек: (i + 1)-я строка содержит координаты концов i-й палочки —
  целые числа x1, y1, x2, y2 (-10   000 ≤ x1, y1, x2, y2 ≤ 10   000).
 Формат вывода
@@ -19,7 +20,6 @@
 #include <optional>
 
 struct MyOutput {
-    std::string answer = "YES";
     uint64_t first_segment;
     uint64_t second_segment;
 
@@ -32,7 +32,7 @@ struct MyOutput {
 };
 
 std::ostream &operator<<(std::ostream &out, const MyOutput &output) {
-    out << output.answer << "\n" << output.first_segment << " " << output.second_segment;
+    out << output.first_segment << " " << output.second_segment;
     return (out);
 }
 
@@ -80,9 +80,9 @@ struct EventPoint {
     int64_t x = 0;
     int64_t y = 0;
     uint64_t number_of_line_segment = 0;
-    bool status_start = true;//1-start; 0-end
-    EventPoint(const Point &a, uint64_t number_, bool status_) : x(a.x), y(a.y), number_of_line_segment(number_),
-                                                                 status_start(status_) {}
+    bool is_start = true;//1-start; 0-end
+    EventPoint(const Point &a, uint64_t number_, const bool status_) : x(a.x), y(a.y), number_of_line_segment(number_),
+                                                                       is_start(status_) {}
 };
 
 int64_t cross_product(const Point &Z, const Point &F, const Point &C) {
@@ -132,7 +132,7 @@ bool intersection_two_segments(const Point &a, const Point &b, const Point &c, c
 }
 
 bool cmp_event_point(const EventPoint &a, const EventPoint &b) {
-    return std::tie(a.x, b.status_start, a.y) < std::tie(b.x, a.status_start, b.y);
+    return std::tie(a.x, b.is_start, a.y) < std::tie(b.x, a.is_start, b.y);
 }
 
 
@@ -159,41 +159,35 @@ private:
 public:
     explicit ScanningLine(uint64_t size);
 
-    void build_structure();
-
     std::optional<MyOutput> algorithm();
 };
 
 ScanningLine::ScanningLine(const uint64_t size) : n(size) {
     all_event_point_.reserve(2 * size);
     all_line_segments_.reserve(size);
-}
 
-void ScanningLine::build_structure() {
     for (uint64_t i = 0; i < n; ++i) {
         Point first, second;
         std::cin >> first >> second;
 
-        Point a = first;
-        Point b = second;
         if (first.x > second.x) {//наши отрезки всегда идут слева направо
-            std::swap(a, b);
+            std::swap(first, second);
         }
 
-        LineSegment now_segment(a, b, i);
+        LineSegment now_segment(first, second, i);
         all_line_segments_.emplace_back(now_segment);
-        all_event_point_.emplace_back(a, i, 1);
-        all_event_point_.emplace_back(b, i, 0);
+        all_event_point_.emplace_back(first, i, 1);
+        all_event_point_.emplace_back(second, i, 0);
     }
 }
 
+
 std::optional<MyOutput> ScanningLine::algorithm() {
-    build_structure();
     sort(all_event_point_.begin(), all_event_point_.end(), cmp_event_point);
     std::optional<MyOutput> result;
     for (auto &event_point_now : all_event_point_) {
         uint64_t number_segment = event_point_now.number_of_line_segment;
-        if (event_point_now.status_start == 1) {
+        if (event_point_now.is_start) {
             result = processing_start_(number_segment);
         } else {
             result = processing_end_(number_segment);
@@ -209,19 +203,19 @@ std::optional<MyOutput> ScanningLine::processing_start_(uint64_t number_segment)
     if (it != set_line_segments_.end()) {// значит есть правее
         bool result = intersection_two_segments(all_line_segments_[number_segment].start,
                                                 all_line_segments_[number_segment].end,
-                                                (*it).start,
-                                                (*it).end);
+                                                it->start,
+                                                it->end);
         if (result) {
-            return MyOutput((*it).number, number_segment);
+            return MyOutput(it->number, number_segment);
         }
     }
     if (it != set_line_segments_.begin()) {//значит есть левее
         auto prev_it = std::prev(it, 1);
-        bool result = intersection_two_segments((*prev_it).start, (*prev_it).end,
+        bool result = intersection_two_segments(prev_it->start, prev_it->end,
                                                 all_line_segments_[number_segment].start,
                                                 all_line_segments_[number_segment].end);
         if (result) {
-            return MyOutput(number_segment, (*prev_it).number);
+            return MyOutput(number_segment, prev_it->number);
         }
     }
     set_line_segments_.insert(all_line_segments_[number_segment]);
@@ -234,10 +228,10 @@ std::optional<MyOutput> ScanningLine::processing_end_(uint64_t number_segment) {
         it != prev(set_line_segments_.end(), 1)) {// значит есть левее и правее
         auto next_it = std::next(it, 1);
         auto prev_it = std::prev(it, 1);
-        bool result = intersection_two_segments((*prev_it).start, (*prev_it).end, (*next_it).start,
-                                                (*next_it).end);
+        bool result = intersection_two_segments(prev_it->start, prev_it->end, next_it->start,
+                                                next_it->end);
         if (result) {
-            return MyOutput((*next_it).number, (*prev_it).number);
+            return MyOutput(next_it->number, prev_it->number);
         }
         set_line_segments_.erase(it);
     }
@@ -253,7 +247,7 @@ int main() {
     auto result = search_intersecting_segments.algorithm();
 
     if (result.has_value())
-        std::cout << result.value();
+        std::cout << "YES" << "\n" << result.value();
     else {
         std::cout << "NO";
     }
