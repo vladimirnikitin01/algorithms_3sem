@@ -17,6 +17,7 @@
 #include <cmath>
 #include <limits>
 #include <iomanip>
+#include <algorithm>
 
 const long double PI = 3.1415926535897932384626;
 
@@ -77,6 +78,8 @@ struct Edge {
     Point end;
     Point vertex_3_in_face;
     int64_t A = 0, B = 0, C = 0, D = 0;//уравнения плоскости
+    //у меня в структуре Edge хранится vertex_3_in_face. Это надо для дальнейшей удобной работы, так как
+    // это не просто отрезок, а отрезок определенной грани.
     Edge(const Point &first, const Point &second, const Point &third) : start(first), end(second),
                                                                         vertex_3_in_face(third) {
         A = first.y * (second.z - third.z) + second.y * (third.z - first.z) + third.y * (first.z - second.z);
@@ -120,11 +123,11 @@ struct Face {
 
 class ConvexHull_3D {
 private:
-    std::map<Edge, int> map_edge;
+    std::map<Edge, int> map_edge_;
     //множество незакрытых ребер, а также количество которое мы их трогали, int сколько раз мы их трогали
-    std::vector<Point> array_points;
+    std::vector<Point> array_points_;
     //массив всех точек, нужно для поиска новых граней
-    std::vector<Face> array_face;
+    std::vector<Face> array_face_;
     //массив всех граней
 
     Point search_first_point_();
@@ -152,8 +155,6 @@ private:
 public:
     explicit ConvexHull_3D(uint64_t n);
 
-    void add_point(const Point &a);
-
     void build();
 
     void algorithm(uint64_t k);
@@ -162,28 +163,27 @@ public:
 };
 
 ConvexHull_3D::ConvexHull_3D(uint64_t n) {
-    array_points.reserve(n);
-}
+    array_points_.reserve(n);
+    Point point_input;
+    for (uint64_t i = 0; i < n; ++i) {
+        std::cin >> point_input;
+        array_points_.push_back(point_input);
+    }
 
-void ConvexHull_3D::add_point(const Point &a) {
-    array_points.push_back(a);
+    build_first_face_();
+    while (!map_edge_.empty()) {
+        build_farther_face_();
+    }
 }
 
 Point ConvexHull_3D::search_first_point_() {
-    uint64_t index_min_point = 0;
-    for (uint64_t i = 1; i < array_points.size(); ++i) {
-        Point &point_now = array_points[i];
-        if (point_now < array_points[index_min_point]) {
-            index_min_point = i;
-        }
-    }
-    return array_points[index_min_point];
+    return *std::min_element(array_points_.begin(), array_points_.end());
 }
 
 Point ConvexHull_3D::search_second_point_(const Point &first) {
     long double min_tan = std::numeric_limits<long double>::max();
     Point result;
-    for (auto &point_now : array_points) {
+    for (auto &point_now : array_points_) {
         int64_t relative_x = point_now.x - first.x;
         int64_t relative_y = point_now.y - first.y;
         int64_t relative_z = point_now.z - first.z;
@@ -219,7 +219,7 @@ long double ConvexHull_3D::cos_between_the_planes_(const Face &first) {
 Point ConvexHull_3D::search_third_point_(const Point &a, const Point &b) {
     long double cos = -2;
     Point result;
-    for (auto &point_now : array_points) {
+    for (auto &point_now : array_points_) {
         if (point_now != a && point_now != b) {
             Face edge_now(a, b, point_now);
             long double cos_now = cos_between_the_planes_(edge_now);
@@ -283,34 +283,34 @@ void ConvexHull_3D::build_first_face_() {
     Point b = search_second_point_(a);
     Point c = search_third_point_(a, b);
     //мы смогли построить первую базовую плоскость
-    array_face.emplace_back(a, b, c);
-    map_edge.insert({Edge(a, b, c), 1});
-    map_edge.insert({Edge(a, c, b), 1});
-    map_edge.insert({Edge(b, c, a), 1});
+    array_face_.emplace_back(a, b, c);
+    map_edge_.insert({Edge(a, b, c), 1});
+    map_edge_.insert({Edge(a, c, b), 1});
+    map_edge_.insert({Edge(b, c, a), 1});
 }
 
 void ConvexHull_3D::insert_new_edges_(const Point &Point_now, const Edge &edge_now) {
-    array_face.emplace_back(Point_now, edge_now.start, edge_now.end);
+    array_face_.emplace_back(Point_now, edge_now.start, edge_now.end);
     Edge new_edge1(edge_now.start, Point_now, edge_now.end);
     Edge new_edge2(edge_now.end, Point_now, edge_now.start);
-    if (map_edge[new_edge1] >= 1) {
-        map_edge.erase(new_edge1);
+    if (map_edge_[new_edge1] >= 1) {
+        map_edge_.erase(new_edge1);
     } else {
-        ++map_edge[new_edge1];
+        ++map_edge_[new_edge1];
     }
-    if (map_edge[new_edge2] >= 1) {
-        map_edge.erase(new_edge2);
+    if (map_edge_[new_edge2] >= 1) {
+        map_edge_.erase(new_edge2);
     } else {
-        ++map_edge[new_edge2];
+        ++map_edge_[new_edge2];
     }
 }
 
 void ConvexHull_3D::build_farther_face_() {//строим еще одну грань
-    auto it = map_edge.begin();
+    auto it = map_edge_.begin();
     Edge edge_now = (*it).first;
     long double corner = -2;
     Point result;
-    for (auto &point_now : array_points) {
+    for (auto &point_now : array_points_) {
         //ищем точку, чтобы сделать еще одну грань для этого ребра
         if (point_now != edge_now.start && point_now != edge_now.end && point_now != edge_now.vertex_3_in_face) {
             long double corner_now = do_correct_corner_(edge_now, point_now);
@@ -320,15 +320,8 @@ void ConvexHull_3D::build_farther_face_() {//строим еще одну гра
             }
         }
     }
-    map_edge.erase(it);
+    map_edge_.erase(it);
     insert_new_edges_(result, edge_now);
-}
-
-void ConvexHull_3D::build() {
-    build_first_face_();
-    while (!map_edge.empty()) {
-        build_farther_face_();
-    }
 }
 
 long double ConvexHull_3D::distance_from_point_to_face_(const Face &face_now, const Point &point_now) {
@@ -343,7 +336,7 @@ void ConvexHull_3D::algorithm(uint64_t k) {
     for (uint64_t i = 0; i < k; ++i) {
         std::cin >> point_now;
         long double min_distance = std::numeric_limits<long double>::max();
-        for (auto &face_now : array_face) {
+        for (auto &face_now : array_face_) {
             auto distance_now = distance_from_point_to_face_(face_now, point_now);
             if (distance_now < min_distance) {
                 min_distance = distance_now;
@@ -357,14 +350,8 @@ int main() {
     std::ios::sync_with_stdio(false);
     std::cin.tie(nullptr);
     uint64_t n;
-    Point point_input;
     std::cin >> n;
     ConvexHull_3D little_hull(n);
-    for (uint64_t i = 0; i < n; ++i) {
-        std::cin >> point_input;
-        little_hull.add_point(point_input);
-    }
-    little_hull.build();
     std::cin >> n;
     little_hull.algorithm(n);
 }
