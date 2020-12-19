@@ -1,6 +1,7 @@
 /*Арсений и Илья затеяли странную игру. Сначала Илья придумывает,
 какие бы точки он хотел видеть внутри воображаемого яблока.
-А затем он спрашивает Арсения, что если бы червячок находился в некоторой точке внутри такого минимально возможного яблока,
+А затем он спрашивает Арсения, что если бы червячок находился в некоторой точке
+ внутри такого минимально возможного яблока,
 то сколько бы ему пришлось бы скушать мякоти, чтобы выбраться на поверхность.
 Формат ввода
 На первой строке число N (4 ≤ N ≤ 1,000). Далее N строк содержат координаты точек для яблока.
@@ -153,22 +154,15 @@ private:
     void build_farther_face_();
 
 public:
-    explicit ConvexHull_3D(uint64_t n);
-
-    void build();
+    explicit ConvexHull_3D(const std::vector<Point> &all_point);
 
     void algorithm(uint64_t k);
 
     static Point projection_point(const Edge &edge_active, const Point &point_now);
 };
 
-ConvexHull_3D::ConvexHull_3D(uint64_t n) {
-    array_points_.reserve(n);
-    Point point_input;
-    for (uint64_t i = 0; i < n; ++i) {
-        std::cin >> point_input;
-        array_points_.push_back(point_input);
-    }
+ConvexHull_3D::ConvexHull_3D(const std::vector<Point> &all_point) {
+    array_points_ = all_point;
 
     build_first_face_();
     while (!map_edge_.empty()) {
@@ -351,7 +345,14 @@ int main() {
     std::cin.tie(nullptr);
     uint64_t n;
     std::cin >> n;
-    ConvexHull_3D little_hull(n);
+    std::vector<Point> all_points;
+    all_points.reserve(n);
+    Point point_input;
+    for (uint64_t i = 0; i < n; ++i) {
+        std::cin >> point_input;
+        all_points.emplace_back(point_input);
+    }
+    ConvexHull_3D little_hull(all_points);
     std::cin >> n;
     little_hull.algorithm(n);
 }
