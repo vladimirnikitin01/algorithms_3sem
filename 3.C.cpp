@@ -5,13 +5,12 @@
  * то найти все возможные первые ходы, ведущие к его победе.*/
 #include <iostream>
 #include <vector>
-#include <set>
 
 class SpragaGrande {
 private:
     std::vector<uint64_t> sg_;
 
-    static uint64_t mex_(const std::set<uint64_t> &used);
+    static uint64_t mex_(const std::vector<bool> &used);
 
 public:
     explicit SpragaGrande(uint64_t n);
@@ -20,30 +19,31 @@ public:
 };
 
 SpragaGrande::SpragaGrande(uint64_t n) {
+    //базовые значения, ручками определяем их
     sg_.resize(n + 1);
     sg_[2] = 1;
     if (n >= 3) {
         sg_[3] = 2;
     }
+
     for (uint64_t i = 5; i < n + 1; ++i) {
-        std::set<uint64_t> used;
-        used.insert(sg_[i - 2]);
-        used.insert(sg_[i - 1]);
+        std::vector<bool> used(n + 1, false);
+        used[sg_[i - 2]] = true;
+        used[sg_[i - 1]] = true;
         for (uint64_t j = 2; j <= i - 3; ++j) {
-            used.insert(sg_[j] ^ sg_[i - 1 - j]);
+            used[sg_[j] ^ sg_[i - 1 - j]] = true;
         }
         sg_[i] = mex_(used);
     }
 }
 
-uint64_t SpragaGrande::mex_(const std::set<uint64_t> &used) {
-    uint64_t result = 0;
-    while (true) {
-        if (used.find(result) == used.end()) {
-            return result;
+uint64_t SpragaGrande::mex_(const std::vector<bool> &used) {
+    for (uint64_t i = 0; i < used.size(); ++i) {
+        if (used[i] == false) {
+            return i;
         }
-        ++result;
     }
+    return used.size();
 }
 
 std::vector<uint64_t> SpragaGrande::give_sg() {
@@ -64,7 +64,6 @@ void algorithm(uint64_t n) {
             std::cout << i << "\n";
         }
     }
-
 }
 
 int main() {
