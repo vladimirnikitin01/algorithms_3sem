@@ -1,16 +1,14 @@
 #include <cmath>
 #include <cstdio>
 #include <iostream>
-#include <utility>
 #include <vector>
 #include <complex>
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <string>
 
-using namespace std;
-const int64_t base_256 = 256;
+const uint64_t base_256 = 256;
 const long double PI = 3.1415926535897932384626;
 
 // Структура, описывающая заголовок WAV файла.
@@ -31,23 +29,18 @@ struct WAVHEADER {
     // Далее следуют непосредственно Wav данные.
 };
 
-int64_t from256to10(vector<int64_t> &one_block) {
+uint64_t from256to10(std::vector<uint64_t> &one_block, std::vector<uint64_t> &degree) {
     // оптимизация, сразу создать один массив такой
-    vector<int64_t> degree(one_block.size());
-    degree[0] = 1;
-    for (int64_t i = 1; i < one_block.size(); ++i) {
-        degree[i] = base_256 * degree[i - 1];
-    }
 
-    int64_t sum = 0;
+    uint64_t sum = 0;
     for (uint64_t i = 0; i < one_block.size(); ++i) {
         sum += degree[i] * one_block[i];
     }
     return sum;
 }
 
-vector<int64_t> from10to256(int64_t number, int64_t base = 256) {
-    vector<int64_t> block;
+std::vector<uint64_t> from10to256(uint64_t number, uint64_t base = 256) {
+    std::vector<uint64_t> block;
     while (number != 0) {
         block.push_back(number % base);
         number /= base;
@@ -55,103 +48,184 @@ vector<int64_t> from10to256(int64_t number, int64_t base = 256) {
     return block;
 }
 
-class ChangeData {
+class CompressingMusic {
 private:
-    typedef complex<long double> base;
-    vector<int64_t> data;
-    vector<base> after_FFT;
+    std::vector<uint64_t> new_data;
+    std::vector<uint64_t> degree;
+    std::vector<std::complex<long double>> used_array;
     WAVHEADER header;
+    char *path;
 public:
-    ChangeData(const WAVHEADER &header_, const unsigned char *data_input) : header(header_) {
-        vector<int64_t> all_block(header_.subchunk2Size / header_.blockAlign);
-
-        int64_t blockAlign = header_.blockAlign;
-        vector<int64_t> one_block(blockAlign);
-        for (uint64_t i = 0; i < header_.subchunk2Size; i += blockAlign) {
-            for (uint64_t j = 0; j < blockAlign; ++j) {
-                one_block[j] = data_input[i + j];
-            }
-            all_block[i / blockAlign] = from256to10(one_block);
-        }
-        data = all_block;
-        after_FFT.reserve(all_block.size());
-        //прописать в цикле это самому
-        for (uint64_t i = 0; i < all_block.size(); ++i) {
-            after_FFT[i] = all_block[i];
-        }
-    };
-
-    vector<int64_t> give_new_data();
+    CompressingMusic(const WAVHEADER &header_,
+                     const unsigned char *data_input,
+                     char *path_);
 
     void preprocessing_before_FFT();
 
-    void FFT(vector<base> &a, bool invert);
+    static void FFT(std::vector<std::complex<long double>> &a, bool is_invert = false);
 
     void compress();
 
     void algo();
 
+    unsigned char *fill_memory_new_data();
+
+    void write_file(const unsigned char *data_memory);
+
 };
 
-void ChangeData::preprocessing_before_FFT() {
+CompressingMusic::CompressingMusic(const WAVHEADER &header_,
+                                   const unsigned char *data_input,
+                                   char *path_) : header(header_) {
+    path = path_;
+    std::vector<uint64_t> all_block(header_.subchunk2Size / header_.blockAlign);
+    uint64_t blockAlign = header_.blockAlign;
+    std::vector<uint64_t> one_block(blockAlign);
 
+    //проинициализируем массив степеней, чтобы каждый раз не создавать новый
+    degree.resize(blockAlign);
+    degree[0] = 1;
+    for (uint64_t i = 1; i < one_block.size(); ++i) {
+        degree[i] = base_256 * degree[i - 1];
+    }
+
+    for (uint64_t i = 0; i < header_.subchunk2Size; i += blockAlign) {
+        for (uint64_t j = 0; j < blockAlign; ++j) {
+            one_block[j] = data_input[i + j];
+        }
+        all_block[i / blockAlign] = from256to10(one_block, degree);
+    }
+    new_data.resize(all_block.size());
+    used_array.resize(all_block.size());
+    for (uint64_t i = 0; i < all_block.size(); ++i) {
+        used_array[i] = all_block[i];
+    }
+}
+
+void CompressingMusic::preprocessing_before_FFT() {
     // сначала делаем длину кратной степени 2
     uint64_t n = 1;
-    while (n < after_FFT.size()) {
+    while (n < used_array.size()) {
         n <<= 1;
     }
-    after_FFT.resize(n);
+    used_array.resize(n);
 }
 
-void ChangeData::FFT(vector<base> &a, bool invert) {
-    auto n = (int64_t) a.size();
+void CompressingMusic::FFT(std::vector<std::complex<long double>> &a, bool is_invert) {
+    auto n = a.size();
     if (n == 1) return;
 
-    vector<base> a0(n / 2), a1(n / 2);
-    for (int64_t i = 0, j = 0; i < n; i += 2, ++j) {
-        a0[j] = a[i];
-        a1[j] = a[i + 1];
+    std::vector<std::complex<long double>> a_0(n / 2), a_1(n / 2);
+    for (uint64_t i = 0, j = 0; i < n; i += 2, ++j) {
+        a_0[j] = a[i];
+        a_1[j] = a[i + 1];
     }
-    FFT(a0, invert);
-    FFT(a1, invert);
+    FFT(a_0, is_invert);
+    FFT(a_1, is_invert);
 
-    long double ang = 2 * PI / n * (invert ? -1 : 1);
-    base w(1), wn(cos(ang), sin(ang));
-    for (int64_t i = 0; i < n / 2; ++i) {
-        a[i] = a0[i] + w * a1[i];
-        a[i + n / 2] = a0[i] - w * a1[i];
-        if (invert) {
-            a[i] /= 2, a[i + n / 2] /= 2;
+    long double angle = 2 * PI / n;
+    if (is_invert) {
+        angle *= -1;
+    }
+
+    std::complex<long double> w(1), w_n(cos(angle), sin(angle));
+    for (uint64_t i = 0; i < n / 2; ++i) {
+        a[i] = a_0[i] + w * a_1[i];
+        a[i + n / 2] = a_0[i] - w * a_1[i];
+        if (is_invert) {
+            a[i] /= 2;
+            a[i + n / 2] /= 2;
         }
-        w *= wn;
+        w *= w_n;
     }
 }
 
-void ChangeData::compress() {
+void CompressingMusic::compress() {
     double long percent;
-    cin >> percent;
-    int64_t first_element_change = after_FFT.size() * (1 - percent / 100);
-    for (uint64_t i = first_element_change; i < after_FFT.size(); ++i) {
-        after_FFT[i] = 0;
+    std::cout << "Введите на сколько процентов сжать\n";
+    std::cin >> percent;
+    uint64_t first_element_change = used_array.size() * (1 - percent / 100);
+    for (uint64_t i = first_element_change; i < used_array.size(); ++i) {
+        used_array[i] = 0;
     }
 }
 
-void ChangeData::algo() {
+void CompressingMusic::algo() {
     preprocessing_before_FFT();
-    FFT(after_FFT, false);
+    FFT(used_array);
     compress();
-    FFT(after_FFT, true);
-    for (uint64_t i = 0; i < data.size(); ++i) {
-        data[i] = round(after_FFT[i].real());
+    FFT(used_array, true);
+    for (uint64_t i = 0; i < new_data.size(); ++i) {
+        new_data[i] = round(used_array[i].real());
     }
+    auto memory_to_record = fill_memory_new_data();
+    write_file(memory_to_record);
 }
 
-vector<int64_t> ChangeData::give_new_data() {
-    return data;
+unsigned char *CompressingMusic::fill_memory_new_data() {
+    // запись в data_memory
+    uint64_t blockAlign = header.blockAlign;
+
+    auto data_memory = new unsigned char[header.subchunk2Size];
+    for (uint64_t i = 0; i < header.subchunk2Size; i += blockAlign) {
+        auto block_now = from10to256(new_data[i / blockAlign]);
+        if (blockAlign < block_now.size()) {
+            for (uint64_t j = 0; j < block_now.size(); ++j) {
+                data_memory[i + j] = 255;
+                //cout << "AAaaaa ";
+            }
+        } else {
+            uint64_t start_index = i;
+            for (uint64_t j = 0; j < block_now.size(); ++j) {
+                data_memory[i + j] = block_now[j];
+                start_index = i + j + 1;
+            }
+            for (uint64_t j = 0; j < blockAlign - block_now.size(); ++j) {
+                data_memory[start_index] = 0;
+                ++start_index;
+                //cout<<start_index<<" ";
+
+            }
+        }
+    }
+    return data_memory;
+}
+
+void CompressingMusic::write_file(const unsigned char *data_memory) {
+    // вывод data2 and hearder
+    char path_[4096];
+    std::cout << "Введите полный путь для нового файла\n";
+    std::cin >> path_;
+    auto file_record = open(path_, O_CREAT | O_RDWR | O_TRUNC, 0640);
+    //auto file_record = open("/home/vova/Documents/MIPT/algo/3A/speech_new.wav", O_CREAT | O_RDWR | O_TRUNC, 0640);
+    //write(file_record, &header, sizeof(WAVHEADER));
+    uint64_t count = 0;
+    while (true) {
+        int count_now = write(file_record, &(header) + count, sizeof(WAVHEADER) - count);
+        count += count_now;
+        if (count_now <= 0) {
+            break;
+        }
+    }
+    count = 0;
+    while (true) {
+        int count_now = write(file_record, data_memory + count, header.subchunk2Size - count);
+        count += count_now;
+        if (count_now <= 0) {
+            break;
+        }
+    }
+    close(file_record);
+
+    delete[] data_memory;
 }
 
 int main() {
-    FILE *file = fopen(R"(C:\Users\Vova\Documents\Clion_project(Documents)\3 contest\speech.wav)", "r");
+    char path[4096];
+    std::cout << "Введите полный путь, но лучше используйте файл speech.wav от лектора\n";
+    std::cin >> path;
+    //FILE *file = fopen("/home/vova/Documents/MIPT/algo/3A/speech.wav", "rd");
+    FILE *file = fopen(path, "rd");
     if (!file) {
         std::cout << "Failed open file";
         return 0;
@@ -162,63 +236,9 @@ int main() {
     auto *data = new unsigned char[header.subchunk2Size];
     fread(data, header.subchunk2Size, 1, file);
     fclose(file);
-    //вот тут мы получили data.
-    // надо теперь ее обработать и переобразовать в вектор
-    ChangeData compress_WAV(header, data);
+    CompressingMusic compress_WAV(header, data, path);
     delete[] data;
     compress_WAV.algo();
-
-    // запись в data2
-    int64_t blockAlign = header.blockAlign;
-
-    auto data2 = new unsigned char[header.subchunk2Size];
-    auto new_data = compress_WAV.give_new_data();
-    for (uint64_t i = 0; i < header.subchunk2Size; i += blockAlign) {
-        auto block_now = from10to256(new_data[i / blockAlign]);
-        if (blockAlign < block_now.size()) {
-            for (uint64_t j = 0; j < block_now.size(); ++j) {
-                data2[i + j] = 255;
-                cout << "AAaaaa ";
-            }
-        } else {
-            uint64_t start_index = i;
-            for (uint64_t j = 0; j < block_now.size(); ++j) {
-                data2[i + j] = block_now[j];
-                start_index = i + j + 1;
-            }
-            for (int64_t j = 0; j < blockAlign - block_now.size(); ++j) {
-                data2[start_index] = 0;
-                ++start_index;
-                //cout<<start_index<<" ";
-
-            }
-        }
-    }
-
-
-    // вывод data2 and hearder
-
-    auto file_record = open("/home/vova/Documents/MIPT/algo/test/speech_new.wav", O_CREAT | O_RDWR | O_TRUNC, 0640);
-    //write(file_record, &header, sizeof(WAVHEADER));
-    int64_t count = 0;
-    while (true) {
-        int count_now = write(file_record, &(header) + count, sizeof(WAVHEADER) - count);
-        count += count_now;
-        if (count_now <= 0) {
-            break;
-        }
-    }
-    count = 0;
-    while (true) {
-        int count_now = write(file_record, data2 + count, header.subchunk2Size - count);
-        count += count_now;
-        if (count_now <= 0) {
-            break;
-        }
-    }
-    close(file_record);
-
-    delete[] data2;
     return 0;
 
 }
